@@ -24,9 +24,9 @@ Enter a word into WORDLE.  This Solver recommends the use of the word “OPERA�
 ### Enter WORDLE’s response into Wordle-Solver
 When WORDLE tells you the result of the first try, enter the word and WORDLE’s response using the symbols indicated below into Wordle-Solver.   For the time being, Wordle-Solver is only available as a command-line (CLI) application.  Since command-line applications cannot easily handle colours, players need to map the colours of WORDLE’s letter tiles to the following symbols.
 
-Use _ for ⬜ indicating a letter not in the hidden word in any spot
-Use ?  for 🟨 indicating a letter in the hidden word but in the wrong spot
-Use + for 🟩 indicating a letter in the hidden word and in the correct spot
+* Use _ for ⬜ indicating a letter not in the hidden word in any spot
+* Use ?  for 🟨 indicating a letter in the hidden word but in the wrong spot
+* Use + for 🟩 indicating a letter in the hidden word and in the correct spot
 
 You should enter the result into Wordle-Solver in the format of word:symbols (the word, a colon `:` and the symbols).  For example, for the screenshot above as an example, the input into Wordle-Solver should look like `opera:_?+?_`.
 

@@ -33,7 +33,8 @@ extended_word_list = Utility.load_word_list(extended_word_list_file_path)
 all_correct_symbols = "+" * word_length
 max_tries = 6
 
-def benchmark_word(word: str):
+
+def benchmark_word_autoswitch(word: str):
     game = WordleGame(None, word_length)
     this_round = Round(hidden_word=word, guessed_times=0, success=False, final_solver="simple", tries=[])
     game.hidden_word = this_round.hidden_word
@@ -72,8 +73,8 @@ def do_benchmarking(file_path):
     start_time = time.time()
 
     pool = Pool(multiprocessing.cpu_count())
-    test_rounds = pool.map(benchmark_word, word_list)
-
+    test_rounds = pool.map(benchmark_word_autoswitch, word_list)
+    
     end_time = time.time()
 
     print(f"Benchmarking using {file_path} completed in {end_time - start_time}s")
@@ -89,6 +90,6 @@ def do_benchmarking(file_path):
     print(f"Guessing failed within {max_tries} tries: {len(failed_words)} words")
 
 
-# do_benchmarking(simple_word_list_file_path)
+do_benchmarking(simple_word_list_file_path)
 
 do_benchmarking(extended_word_list_file_path)

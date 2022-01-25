@@ -94,6 +94,7 @@ class WordleSolver():
         letter_freqs = [(letter, prob) for index, (letter, prob) in enumerate(self.get_letter_prob_dict(possible_words).items()) if letter not in self.included_letters + self.excluded_letters + self.high_prob_letters]
         return letter_freqs
 
+
     def is_not_in_word(self, word):
         return all([letter not in word for letter in self.excluded_letters])
 
@@ -178,7 +179,7 @@ if __name__ == "__main__":
     print(" !tries\t\tsee the tries entered")
     print(" !remove_last\tremove the last try entered\n")
 
-    print("Tips: This resolver recommends entering 'opera' as the first word.\n\n")
+    print("Tips: This Solver recommends entering 'opera' as the first word.\n\n")
 
     use_extended_solver = False
 
