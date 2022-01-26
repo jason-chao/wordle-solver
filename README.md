@@ -1,11 +1,18 @@
 # Wordle-Solver
-Wordle-Solver helps people who struggle with vocabulary to enjoy the famous game of [WORDLE](https://www.powerlanguage.co.uk/wordle/).  So that those who find WORDLE extremely hard, just like the developer of Wordle-Solver, will not be embarrassed for not knowing the hidden word of the day or being unable to show their tries.
+Wordle-Solver helps people who struggle with vocabulary enjoy the famous game of [WORDLE](https://www.powerlanguage.co.uk/wordle/).  So that those who find WORDLE extremely hard, just like the developer of Wordle-Solver, will not be embarrassed for not knowing the hidden word of the day or being unable to show their tries.  
 
-Wordle-Solver takes an average of 3.7 tries to pinpoint the hidden word and solves 99.7% of five-letter words commonly used in English within the limit of 6 tries if they are chosen as hidden words. 
+**A web-based interface** is now available at [https://wordle-solver.jasontc.net/](https://wordle-solver.jasontc.net/).  There is no need to run the Python code to try out Wordle-Solver.
 
-Based on probability, Wordle-Solver helps WORDLE players find the best words for the next try.  At the start of the game, this Solver recommends the use of the word “OPERA” on the first try.  After making a try, players enter the word used and WORDLE’s response into Wordle-Solver.   Then, Wordle-Solver will show a list of recommended words based on probability.  In most cases, after 3 – 4 tries, Wordle-Solver is able to pinpoint the hidden word.  
+Wordle-Solver is positioned as a solver for the WORDLE game in general. Wordle-Solver supports a variable word length and works with other implementations of WORDLE. Therefore, it relies on a broader word list and does not target that of the original implementation of WORDLE. 
+
+Based on probability, Wordle-Solver helps WORDLE players find the best words for the next try.  In the classical setting of five letters, Wordle-Solver takes an average of 3.7 tries to pinpoint the hidden word and solves 99.7% of five-letter words commonly used in English within the limit of 6 tries if they are chosen as hidden words.  At the start of the game, this Solver recommends the use of the word “OPERA” on the first try.  After making a try, players enter the word used and WORDLE’s response into Wordle-Solver.   Then, Wordle-Solver will show a list of recommended words based on probability.  In most cases, after 3 – 4 tries, Wordle-Solver is able to pinpoint the hidden word.  
 
 ## How to use
+
+For general users, the use of [the web-based interface](https://wordle-solver.jasontc.net/) is highly recommended.
+
+Follow the steps below if you wish to explore Wordle-Solver at a technical level.
+
 Download Wordle-Solver by cloning this repo. 
 ```
 git clone https://github.com/jason-chao/wordle-solver.git
