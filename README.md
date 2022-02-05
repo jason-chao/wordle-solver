@@ -5,7 +5,7 @@ Wordle-Solver is positioned as a solver for the WORDLE game in general. Wordle-S
 
 ## Web-based version
 
-A web-based interface for Wordle-Solver is now available at [https://wordle-solver.jasontc.net/](https://wordle-solver.jasontc.net/).  There is no need to run the Python code in this repo to try out Wordle-Solver.
+A web-based interface for Wordle-Solver is now available at [https://solvewordle.games/](https://solvewordle.games/).  There is no need to run the Python code in this repo to try out Wordle-Solver.
 
 ![Screenshot of Wordle-Solver web-based UI](wordle_solver_webui_screenshot.png)
 
@@ -22,7 +22,7 @@ In the classical setting of five letters, Wordle-Solver takes an average of 3.7 
 
 ## Usage of the command-line version
 
-For general users, the use of [the web-based interface](https://wordle-solver.jasontc.net/) is highly recommended.
+For general users, the use of [the web-based interface](https://solvewordle.games/) is highly recommended.
 
 Follow the steps below if you wish to explore Wordle-Solver at a technical level.
 
