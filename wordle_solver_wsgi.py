@@ -1,26 +1,40 @@
 #!/usr/bin/env python3
 
 from flask import Flask, request, jsonify, make_response
+from dataclasses import dataclass
 import string
-from datetime import datetime
+import json
+
+
 app = Flask(__name__)
 from wordle_solver import WordleSolver
 
-simple_word_list_file_path = "english_words_10k_mit.txt"
-extended_word_list_file_path = "english_words_alpha_dwyl.txt"
-max_suggested_words = 10
 
-@app.route("/<int:word_length>", methods=["POST"])
-def solve(word_length: int):
-    ui_tries = request.json
+@dataclass
+class SolverAPIParameters:
+    simple_word_list_file_path:str = "english_words_simple.txt"
+    extended_word_list_file_path:str = "english_words_alpha_dwyl.txt"
+    max_suggested_words:str = 10
+    logging_enabled:bool = True
+
+
+def write_log(log):
+    if SolverAPIParameters.logging_enabled:
+        print(log)
+
+
+def handle_tries(ui_tries:list, word_length: int, exclude_plurals: bool=True):
     if isinstance(ui_tries, list):
         tries = [(attempt["word"].lower(), attempt["symbols"]) for attempt in ui_tries if "word" in attempt and "symbols" in attempt]
-        solver_simple = WordleSolver(simple_word_list_file_path, word_length=word_length)
+        solver_simple = WordleSolver(SolverAPIParameters.simple_word_list_file_path, word_length=word_length, exclude_plurals=exclude_plurals)
         if any([True for attempt in tries if any([True for letter in attempt[0] if letter not in string.ascii_lowercase])]):
+            write_log(json.dumps({"error":"invalid_chars", "request": ui_tries}))
             return make_response(jsonify(message="Invalid character(s) detected in words"), 400)
         if any([True for attempt in tries if any([True for symbol in attempt[1] if symbol not in solver_simple.permitted_input_symbols])]):
+            write_log(json.dumps({"error":"invalid_symbols", "request": ui_tries}))
             return make_response(jsonify(message="Invalid symbol(s) detected in symbols"), 400)
         if sum([1 for attempt in tries if len(attempt[0]) == word_length and len(attempt[1]) == word_length]) != len(tries):
+            write_log(json.dumps({"error":"invalid_lengths", "request": ui_tries}))
             return make_response(jsonify(message="Invalid length for word(s) or symbol(s)"), 400)
         word_list_source = "simple"
         solver_simple.tries = tries
@@ -28,14 +42,44 @@ def solve(word_length: int):
         suggested_words = solver_simple.get_suggested_words()
         if len(suggested_words) <= 0:
             word_list_source = "extended"
-            solver_extended = WordleSolver(extended_word_list_file_path, word_length=word_length)
+            solver_extended = WordleSolver(SolverAPIParameters.extended_word_list_file_path, word_length=word_length, exclude_plurals=exclude_plurals)
             solver_extended.tries = solver_simple.tries
             solver_extended.update_pattern_paramters()
             suggested_words = solver_extended.get_suggested_words()
+        suggested_words = suggested_words[:SolverAPIParameters.max_suggested_words]
+        write_log(json.dumps({"error":None, "request": ui_tries, "response": suggested_words}))
         return jsonify(word_list=word_list_source,
-                        suggested_words=suggested_words[:max_suggested_words])
+                        suggested_words=suggested_words)
+    write_log(json.dumps({"error":"wrong_parameter_type", "request": ui_tries}))
     return make_response(jsonify(message="Invalid request"), 400)
-    
+
+
+def entrypoint_cloudfunction(flask_request):
+    if request.method == "OPTIONS":
+        cors_headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Max-Age": "3600"
+        }
+        return ("", 204, cors_headers)
+    word_length = 5
+    exclude_plurals=True
+    if flask_request.args:
+        if "wordlength" in flask_request.args:
+            word_length = int(flask_request.args.get("wordlength"))
+        if "plurals" in flask_request.args:
+            exclude_plurals = not (flask_request.args.get("plurals") == "true")
+    ui_tries = flask_request.get_json()
+    http_response = handle_tries(ui_tries=ui_tries, word_length=word_length, exclude_plurals=exclude_plurals)
+    http_response.headers["Access-Control-Allow-Origin"] = "*"
+    return http_response
+
+
+@app.route("/", methods=["POST", "OPTIONS"])
+def entrypoint_flask():
+    return entrypoint_cloudfunction(request)
+
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0',port=7210)
+    app.run(host="0.0.0.0", port=7210)

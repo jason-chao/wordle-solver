@@ -6,15 +6,15 @@ import random
 
 class WordleSolver():
 
-    def __init__(self, word_list_file_path: str = None, word_length : int = 5, shuffle_suggested_words:bool=True):
+    def __init__(self, word_list_file_path: str = None, word_length : int = 5, exclude_plurals:bool=True):
         self.permitted_input_symbols = "+?_"
         self.word_list = []
         self.symbol_anyletter = "*"
         self.word_list_file_path = word_list_file_path
         self.word_length = word_length
-        self.shuffle_suggested_words = shuffle_suggested_words
+        self.exclude_plurals = exclude_plurals
         if self.word_list_file_path is not None:
-            self.word_list = Utility.load_word_list(self.word_list_file_path, word_length, True)
+            self.word_list = Utility.load_word_list(self.word_list_file_path, word_length, self.exclude_plurals)
         self.reset()
 
     def reset(self):
@@ -95,6 +95,30 @@ class WordleSolver():
         return letter_freqs
 
 
+    def get_letter_positional_prob_dict(self, words):
+        positional_prob = []
+        for i in range(0, len(self.right_spot_pattern)):
+            if self.right_spot_pattern[i] == self.symbol_anyletter:
+                letter_list = [word[i] for word in words]
+                positional_prob.append(self.get_letter_prob_dict(letter_list))
+            else:
+                positional_prob.append({})
+        return positional_prob
+
+
+    def sort_words_with_letter_positional_prob(self, words):
+        letter_position_prob = self.get_letter_positional_prob_dict(words)
+        words_with_prob = []
+        for word in words:
+            score = 1
+            for i in range(0, len(letter_position_prob)):
+                if letter_position_prob[i]:
+                    score *= letter_position_prob[i][word[i]]
+            words_with_prob.append((word, score))
+        words_with_prob.sort(key=lambda element: element[1], reverse=True)
+        return [word_with_prob[0] for word_with_prob in words_with_prob]
+
+
     def is_not_in_word(self, word):
         return all([letter not in word for letter in self.excluded_letters])
 
@@ -142,11 +166,9 @@ class WordleSolver():
             suggested_words = self.get_possible_words()
             self.high_prob_letters = ""
             if len(suggested_words) > 0:
-                if self.shuffle_suggested_words:
-                    random.shuffle(suggested_words)
+                suggested_words = self.sort_words_with_letter_positional_prob(suggested_words)
                 return suggested_words
-        if self.shuffle_suggested_words:
-            random.shuffle(all_possible_words)
+        all_possible_words = self.sort_words_with_letter_positional_prob(all_possible_words)
         return all_possible_words
 
 
@@ -163,7 +185,7 @@ class WordleSolver():
 
 if __name__ == "__main__":
 
-    solver_simple = WordleSolver("english_words_10k_mit.txt")
+    solver_simple = WordleSolver("english_words_simple.txt")
 
     solver_extended = WordleSolver("english_words_alpha_dwyl.txt")
 
