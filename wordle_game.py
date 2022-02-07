@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import string
 import random
 from utility import Utility
@@ -72,10 +73,18 @@ class WordleGame:
 
 if __name__ == "__main__":
 
-    wordle = WordleGame("english_words_10k_mit.txt")
+
+    argParser = argparse.ArgumentParser()
+
+    argParser.add_argument("--length", help="The length (number of letters) of the hidden word", required=False, default=5, type=int)
+    argParser.add_argument("--maxguess", help="The number of guesses allowed", required=False, default=6, type=int)
+
+    args = argParser.parse_args()
+
+    wordle = WordleGame("english_words_10k_mit.txt", args.length)
 
     correct_guess_output = "+" * wordle.word_length
-    max_guess = 6
+    max_guess = args.maxguess
 
     print("The WORDLE game CLI")
     print("Press CTRL+C to exit\n")

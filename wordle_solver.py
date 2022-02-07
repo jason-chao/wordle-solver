@@ -1,8 +1,79 @@
 #!/usr/bin/env python3
 
 import string
+
+import argparse
 from utility import Utility
-import random
+from dataclasses import dataclass
+from typing import List
+
+
+@dataclass
+class SuggestedWordsResults:
+    words:List[str]
+    word_list_file_path:str = None
+
+
+class WorldSolverMultiList:
+
+    def __init__(self, word_list_file_paths: list = [], word_length : int = 5, exclude_plurals:bool=True):
+        self.word_lists = []
+        self.word_list_file_paths = word_list_file_paths
+        self.word_length = word_length
+        self.exclude_plurals = exclude_plurals
+        for file_path in self.word_list_file_paths:
+            word_list = Utility.load_word_list(file_path, self.word_length, self.exclude_plurals)
+            self.word_lists.append(word_list)
+        self.reset()
+        pass
+
+
+    def reset(self):
+        self.tries = []
+        self.solvers = []
+        for word_list in self.word_lists:
+            solver = WordleSolver(None, self.word_length, self.exclude_plurals)
+            solver.word_list = word_list
+            self.solvers.append(solver)
+        pass
+
+
+    def reset_pattern_parameters(self):
+        for solver in self.solvers:
+            solver.reset()
+        pass
+
+
+    def get_pattern_parameter_conflicts(self):
+        if len(self.solvers) > 0:
+            # conflict check results should be the identical across solvers.
+            # it is alright to return conflicts detected from the first sovler only
+            return self.solvers[0].get_pattern_parameter_conflicts()
+        raise Exception("No solvers")
+
+
+    def update_pattern_paramters(self):
+        for solver in self.solvers:
+            solver.tries = self.tries
+            solver.update_pattern_paramters()
+        pass
+
+    
+    def input_guess_result(self, word, result_symbols):
+        for solver in self.solvers:
+            solver.input_guess_result(word, result_symbols)
+        self.tries.append((word, result_symbols))
+        pass
+
+
+    def get_suggested_words(self) -> SuggestedWordsResults:
+        for i in range(0, len(self.solvers)):
+            suggested_words = self.solvers[i].get_possible_words()
+            if len(suggested_words) > 0:
+                return SuggestedWordsResults(suggested_words, self.word_list_file_paths[i])
+        last_word_list_file_path = None if len(self.word_list_file_paths) <= 0 else self.word_list_file_paths[-1]
+        return SuggestedWordsResults([], last_word_list_file_path)
+
 
 class WordleSolver():
 
@@ -14,12 +85,13 @@ class WordleSolver():
         self.word_length = word_length
         self.exclude_plurals = exclude_plurals
         if self.word_list_file_path is not None:
-            self.word_list = Utility.load_word_list(self.word_list_file_path, word_length, self.exclude_plurals)
+            self.word_list = Utility.load_word_list(self.word_list_file_path, self.word_length, self.exclude_plurals)
         self.reset()
 
     def reset(self):
         self.tries = []
         self.reset_pattern_parameters()
+
 
     def reset_pattern_parameters(self):
         self.included_letters = ""
@@ -185,9 +257,16 @@ class WordleSolver():
 
 if __name__ == "__main__":
 
-    solver_simple = WordleSolver("english_words_simple.txt")
+    argParser = argparse.ArgumentParser()
 
-    solver_extended = WordleSolver("english_words_alpha_dwyl.txt")
+    argParser.add_argument("--length", help="The length (number of letters) of the hidden word", required=False, default=5, type=int)
+    argParser.add_argument("--plurals", help="Do not exclude plurals when loading from the word list", required=False, default=False, type=bool)
+
+    args = argParser.parse_args()
+
+    word_list_file_paths = ["english_words_simple.txt", "english_words_alpha_dwyl.txt"]
+
+    solver_multi = WorldSolverMultiList(word_list_file_paths, args.length, not args.plurals)
 
     print("The WORDLE Solver CLI")
     print("Press CTRL+C to exit\n")
@@ -203,8 +282,6 @@ if __name__ == "__main__":
 
     print("Tips: This Solver recommends entering 'opera' as the first word.\n\n")
 
-    use_extended_solver = False
-
     while True:
         print("Please enter you last try as word:symbols")
         user_input = input().lower()
@@ -216,19 +293,19 @@ if __name__ == "__main__":
             if len(values) < 2:
                 print("Invalid format")
                 continue
-            if not all([len(value) == solver_simple.word_length for value in values]):
+            if not all([len(value) == solver_multi.word_length for value in values]):
                 print("Invalid format: length of word or symbol is incorrect")
                 continue
-            if values[1] == "+" * solver_simple.word_length:
+            if values[1] == "+" * solver_multi.word_length:
                 print("Great!")
                 reset = True
             else:
-                solver_simple.input_guess_result(values[0], values[1])
-                conflicts = solver_simple.get_pattern_parameter_conflicts()
+                solver_multi.input_guess_result(values[0], values[1])
+                conflicts = solver_multi.get_pattern_parameter_conflicts()
                 if len(conflicts) > 0:
                     for conflict in conflicts:
                         print(f"{conflict[0]}: {conflict[1]}")
-                    solver_simple.tries = solver_simple.tries[:-1]
+                    solver_multi.tries = solver_multi.tries[:-1]
                     print("Your last try has been removed")
                     continue
         elif (user_input == "!done"):
@@ -237,35 +314,30 @@ if __name__ == "__main__":
             use_extended_solver = True
             print("You are now using an extended word list")
         elif (user_input == "!remove_last"):
-                solver_simple.tries = solver_simple.tries[:-1]
+                solver_multi.tries = solver_multi.tries[:-1]
                 print("Your last try has been removed")
                 continue
         elif (user_input == "!tries"):
-            if len(solver_simple.tries) <= 0:
+            if len(solver_multi.tries) <= 0:
                 print("No tries entered")
             else:
-                for i in range(0, len(solver_simple.tries)):
-                    print(f"\tTry {i}: {solver_simple.tries[i]}")
+                for i in range(0, len(solver_multi.tries)):
+                    print(f"\tTry {i}: {solver_multi.tries[i]}")
             continue
         else:
             print("Invalid input")
 
 
         if reset:
-            solver_simple.tries = []
-            use_extended_solver = False
+            solver_multi.reset()
             print("The state is reset")
             continue
 
-        suggested_words = solver_simple.get_suggested_words()
-        if use_extended_solver or len(suggested_words) <= 0:
-            solver_extended.tries = solver_simple.tries
-            solver_extended.update_pattern_paramters()
-            suggested_words = solver_extended.get_suggested_words()
-            use_extended_solver = True
-        if len(suggested_words) > 0:
-            print(f"Suggested words (from {'simple' if not use_extended_solver else 'extended'} word list):")
-            for suggestion in suggested_words[:10]:
+        suggested_words = solver_multi.get_suggested_words()
+
+        if len(suggested_words.words) > 0:
+            print(f"Suggested words (from list '{suggested_words.word_list_file_path}'):")
+            for suggestion in suggested_words.words[:10]:
                 print(f"\t{suggestion}")
         else:
             print("Sorry, no other possible words.  Please check the result symbols you entered.")
