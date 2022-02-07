@@ -269,7 +269,7 @@ if __name__ == "__main__":
     solver_multi = WorldSolverMultiList(word_list_file_paths, args.length, not args.plurals)
 
     print("The WORDLE Solver CLI")
-    print(f"(Word length: {args.length}; Plurals: {not args.plurals})")
+    print(f"(Word length: {args.length}; Plurals: {'Yes' if args.plurals else 'No'})")
     print("Press CTRL+C to exit\n")
     print("Meanings of symbols:")
     print(" +\tletter in the word and in the right spot (green box)")

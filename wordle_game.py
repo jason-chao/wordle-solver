@@ -89,7 +89,7 @@ if __name__ == "__main__":
     max_guess = args.maxguess
 
     print("The WORDLE game CLI")
-    print(f"(Word length: {wordle.word_length}; Plurals: {not wordle.exclude_plurals}; Max guesses: {max_guess})")
+    print(f"(Word length: {wordle.word_length}; Plurals: {'Yes' if not wordle.exclude_plurals else 'No'}; Max guesses: {max_guess})")
     print("Press CTRL+C to exit\n")
     print("Meanings of symbols:")
     print(" +\tletter in the word and in the right spot")
