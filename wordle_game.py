@@ -7,13 +7,14 @@ from utility import Utility
 
 class WordleGame:
 
-    def __init__(self, word_list_file_path: str = None, word_length : int = 5):
+    def __init__(self, word_list_file_path: str = None, word_length : int = 5, exclude_plurals:bool=True):
         self.word_list = []
         self.hidden_word = None
         self.word_list_file_path = word_list_file_path
         self.word_length = word_length
+        self.exclude_plurals = exclude_plurals
         if self.word_list_file_path is not None:
-            self.word_list = Utility.load_word_list(self.word_list_file_path, word_length, True)
+            self.word_list = Utility.load_word_list(self.word_list_file_path, self.word_length, self.exclude_plurals)
 
     def are_characters_valid(self, word) -> bool:
         if len(word) != self.word_length:
@@ -77,16 +78,18 @@ if __name__ == "__main__":
     argParser = argparse.ArgumentParser()
 
     argParser.add_argument("--length", help="The length (number of letters) of the hidden word", required=False, default=5, type=int)
+    argParser.add_argument("--plurals", help="Do not exclude plurals when loading from the word list", required=False, default=False, type=bool)
     argParser.add_argument("--maxguess", help="The number of guesses allowed", required=False, default=6, type=int)
 
     args = argParser.parse_args()
 
-    wordle = WordleGame("english_words_10k_mit.txt", args.length)
+    wordle = WordleGame("english_words_10k_mit.txt", args.length, not args.plurals)
 
     correct_guess_output = "+" * wordle.word_length
     max_guess = args.maxguess
 
     print("The WORDLE game CLI")
+    print(f"(Word length: {wordle.word_length}; Plurals: {not wordle.exclude_plurals}; Max guesses: {max_guess})")
     print("Press CTRL+C to exit\n")
     print("Meanings of symbols:")
     print(" +\tletter in the word and in the right spot")
