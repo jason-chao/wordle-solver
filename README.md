@@ -18,7 +18,7 @@ The developer of Wordle-Solver experimented with a number of other approaches.  
 
 ## How does Wordle-Solver perform?
 
-In the classical setting of five letters, Wordle-Solver takes an average of 3.42 tries to pinpoint the hidden word and solves 99.7% of five-letter words commonly used in English within the limit of 6 tries if they are chosen as hidden words.  At the start of the game, this Solver recommends the use of the word “OPERA” on the first try.  After making a try, players enter the word used and WORDLE’s response into Wordle-Solver.   Then, Wordle-Solver will show a list of recommended words based on probability.  In most cases, after 3 – 4 tries, Wordle-Solver is able to pinpoint the hidden word.  
+Although Wordle-Solver does not specifically target the original WORDLE, it is common to benchmark the performance based on the original WORDLE's word list.  Wordle-Solver takes an average of 4.6 tries to pinpoint a hidden word chosen from the original WORDLE's word list (with plurals excluded).  The game is solved within the limit of 6 tries 91.3% of the time.
 
 ## Usage of the command-line version
 
