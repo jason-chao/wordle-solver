@@ -3,9 +3,14 @@
 import string
 
 import argparse
-from utility import Utility
-from dataclasses import dataclass
+import math
+import sys
+import random
 from typing import List
+
+from utility import Utility
+from wordle_game import WordleGame
+from dataclasses import dataclass
 
 
 @dataclass
@@ -16,11 +21,12 @@ class SuggestedWordsResults:
 
 class WorldSolverMultiList:
 
-    def __init__(self, word_list_file_paths: list = [], word_length : int = 5, exclude_plurals:bool=True):
+    def __init__(self, word_list_file_paths: list = [], word_length : int = 5, exclude_plurals:bool=True, word_entropies:dict={}):
         self.word_lists = []
         self.word_list_file_paths = word_list_file_paths
         self.word_length = word_length
         self.exclude_plurals = exclude_plurals
+        self.word_entropies = word_entropies
         for file_path in self.word_list_file_paths:
             word_list = Utility.load_word_list(file_path, self.word_length, self.exclude_plurals)
             self.word_lists.append(word_list)
@@ -34,6 +40,7 @@ class WorldSolverMultiList:
         for word_list in self.word_lists:
             solver = WordleSolver(None, self.word_length, self.exclude_plurals)
             solver.word_list = word_list
+            solver.word_entropies = self.word_entropies
             self.solvers.append(solver)
         pass
 
@@ -68,11 +75,17 @@ class WorldSolverMultiList:
 
     def get_suggested_words(self) -> SuggestedWordsResults:
         for i in range(0, len(self.solvers)):
-            suggested_words = self.solvers[i].get_possible_words()
+            suggested_words = self.solvers[i].get_suggested_words()
             if len(suggested_words) > 0:
                 return SuggestedWordsResults(suggested_words, self.word_list_file_paths[i])
         last_word_list_file_path = None if len(self.word_list_file_paths) <= 0 else self.word_list_file_paths[-1]
         return SuggestedWordsResults([], last_word_list_file_path)
+
+    
+    def set_excluded_words(self, excluded_words:list):
+        for solver in self.solvers:
+            solver.excluded_words = excluded_words
+        pass
 
 
 class WordleSolver():
@@ -80,10 +93,14 @@ class WordleSolver():
     def __init__(self, word_list_file_path: str = None, word_length : int = 5, exclude_plurals:bool=True):
         self.permitted_input_symbols = "+?_"
         self.word_list = []
+        self.word_entropies = {}
         self.symbol_anyletter = "*"
         self.word_list_file_path = word_list_file_path
         self.word_length = word_length
         self.exclude_plurals = exclude_plurals
+        self.sort_suggested_words_by_entropies = False
+        self.entropy_calculation_max_hidden_word_count = 100
+        self.entropy_calculation_local_max_word_count = 200
         if self.word_list_file_path is not None:
             self.word_list = Utility.load_word_list(self.word_list_file_path, self.word_length, self.exclude_plurals)
         self.reset()
@@ -100,6 +117,7 @@ class WordleSolver():
         self.wrong_spot_pattern = [""] * self.word_length
         self.right_spot_pattern = self.symbol_anyletter * self.word_length
         self.max_letter_occurrence = {}
+        self.excluded_words = []
 
 
     def get_pattern_parameter_conflicts(self):
@@ -163,7 +181,7 @@ class WordleSolver():
     def get_suggested_letters_by_freq(self, possible_words):
         if len(possible_words) <= 0:
             return []
-        letter_freqs = [(letter, prob) for index, (letter, prob) in enumerate(self.get_letter_prob_dict(possible_words).items()) if letter not in self.included_letters + self.excluded_letters + self.high_prob_letters]
+        letter_freqs = [(letter, prob) for _, (letter, prob) in enumerate(self.get_letter_prob_dict(possible_words).items()) if letter not in self.included_letters + self.excluded_letters + self.high_prob_letters]
         return letter_freqs
 
 
@@ -177,6 +195,31 @@ class WordleSolver():
                 positional_prob.append({})
         return positional_prob
 
+    
+    def get_word_entropy_dict(self, words):
+        word_entropy_dict = {}
+        game = WordleGame(None, self.word_length)
+        game.word_list = words
+        solver = WordleSolver(None, self.word_length)
+        solver.word_list = words
+        word_count = len(words)
+        hidden_word_list = words.copy()
+        random.shuffle(hidden_word_list)
+        hidden_word_list = hidden_word_list[:self.entropy_calculation_max_hidden_word_count]
+        for word in words:
+            possible_word_count = []
+            for hidden_word in hidden_word_list:
+                solver.reset()
+                game.hidden_word = hidden_word
+                response_symbols = game.guess(word)
+                solver.input_guess_result(word, response_symbols)
+                solver.update_pattern_paramters()
+                possible_word_count.append(len(solver.get_possible_words()))
+            probs = [(sys.float_info.min + (count / word_count)) for count in possible_word_count]
+            entropy = 0 - sum([prob * math.log(prob, 2) for prob in probs])
+            word_entropy_dict[word] = entropy
+        return word_entropy_dict
+
 
     def sort_words_with_letter_positional_prob(self, words):
         letter_position_prob = self.get_letter_positional_prob_dict(words)
@@ -188,7 +231,25 @@ class WordleSolver():
                     score *= letter_position_prob[i][word[i]]
             words_with_prob.append((word, score))
         words_with_prob.sort(key=lambda element: element[1], reverse=True)
-        return [word_with_prob[0] for word_with_prob in words_with_prob]
+        return words_with_prob
+
+    
+    def sort_words(self, words):
+        sorted_words = []
+        if self.sort_suggested_words_by_entropies:
+            if len(words) <= self.entropy_calculation_local_max_word_count:
+                localised_entropies = self.get_word_entropy_dict(words)
+                words_with_socres = [(word, localised_entropies[word]) for word in words]
+                words_with_socres.sort(key=lambda element: element[1], reverse=False)
+                sorted_words = [word for (word, _) in words_with_socres]
+            elif len(self.word_entropies) > 0:
+                if all([word in self.word_entropies for word in words]):
+                    words_with_socres = [(word, self.word_entropies[word]) for word in words]
+                    words_with_socres.sort(key=lambda element: element[1], reverse=False)
+                    sorted_words = [word for (word, _) in words_with_socres]
+        if len(sorted_words) <= 0:
+            sorted_words = [word_with_prob[0] for word_with_prob in self.sort_words_with_letter_positional_prob(words)]
+        return sorted_words
 
 
     def is_not_in_word(self, word):
@@ -210,8 +271,8 @@ class WordleSolver():
     
 
     def get_possible_words(self):
-        all_tried_words = [attempt[0] for attempt in self.tries]
-        first_level_filter = [word for word in self.word_list if self.is_in_word(word) and self.is_not_in_word(word) and self.is_not_tried(word) and word not in all_tried_words]
+        all_excluded_words = list(set([attempt[0] for attempt in self.tries] + self.excluded_words))
+        first_level_filter = [word for word in self.word_list if self.is_in_word(word) and self.is_not_in_word(word) and self.is_not_tried(word) and word not in all_excluded_words]
         second_level_filter = [word for word in first_level_filter if all([word[i] not in self.wrong_spot_pattern[i] for i in range(0, self.word_length)])]
         third_level_filter = [word for word in second_level_filter if self.match_right_spot_pattern(word)]
         if len(self.max_letter_occurrence) <= 0:
@@ -238,9 +299,9 @@ class WordleSolver():
             suggested_words = self.get_possible_words()
             self.high_prob_letters = ""
             if len(suggested_words) > 0:
-                suggested_words = self.sort_words_with_letter_positional_prob(suggested_words)
+                suggested_words = self.sort_words(suggested_words)
                 return suggested_words
-        all_possible_words = self.sort_words_with_letter_positional_prob(all_possible_words)
+        all_possible_words = self.sort_words(all_possible_words)
         return all_possible_words
 
 
