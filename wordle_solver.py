@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 
 import string
+import sys
 
 import argparse
-import math
-import sys
-import random
 from typing import List
 
 from utility import Utility
-from wordle_game import WordleGame
 from dataclasses import dataclass
 
 
@@ -27,6 +24,7 @@ class WorldSolverMultiList:
         self.word_length = word_length
         self.exclude_plurals = exclude_plurals
         self.word_entropies = word_entropies
+        self.max_try_indexes_for_lists = []
         for file_path in self.word_list_file_paths:
             word_list = Utility.load_word_list(file_path, self.word_length, self.exclude_plurals)
             self.word_lists.append(word_list)
@@ -75,6 +73,9 @@ class WorldSolverMultiList:
 
     def get_suggested_words(self) -> SuggestedWordsResults:
         for i in range(0, len(self.solvers)):
+            if len(self.max_try_indexes_for_lists) >= len(self.solvers):
+                if len(self.tries) >= self.max_try_indexes_for_lists[i]:
+                    continue
             suggested_words = self.solvers[i].get_suggested_words()
             if len(suggested_words) > 0:
                 return SuggestedWordsResults(suggested_words, self.word_list_file_paths[i])
@@ -98,9 +99,6 @@ class WordleSolver():
         self.word_list_file_path = word_list_file_path
         self.word_length = word_length
         self.exclude_plurals = exclude_plurals
-        self.sort_suggested_words_by_entropies = False
-        self.entropy_calculation_max_hidden_word_count = 100
-        self.entropy_calculation_local_max_word_count = 200
         if self.word_list_file_path is not None:
             self.word_list = Utility.load_word_list(self.word_list_file_path, self.word_length, self.exclude_plurals)
         self.reset()
@@ -157,7 +155,6 @@ class WordleSolver():
 
 
     def get_letter_prob_dict(self, word_list):
-
         if len(word_list) <= 0:
             return []
 
@@ -195,31 +192,6 @@ class WordleSolver():
                 positional_prob.append({})
         return positional_prob
 
-    
-    def get_word_entropy_dict(self, words):
-        word_entropy_dict = {}
-        game = WordleGame(None, self.word_length)
-        game.word_list = words
-        solver = WordleSolver(None, self.word_length)
-        solver.word_list = words
-        word_count = len(words)
-        hidden_word_list = words.copy()
-        random.shuffle(hidden_word_list)
-        hidden_word_list = hidden_word_list[:self.entropy_calculation_max_hidden_word_count]
-        for word in words:
-            possible_word_count = []
-            for hidden_word in hidden_word_list:
-                solver.reset()
-                game.hidden_word = hidden_word
-                response_symbols = game.guess(word)
-                solver.input_guess_result(word, response_symbols)
-                solver.update_pattern_paramters()
-                possible_word_count.append(len(solver.get_possible_words()))
-            probs = [(sys.float_info.min + (count / word_count)) for count in possible_word_count]
-            entropy = 0 - sum([prob * math.log(prob, 2) for prob in probs])
-            word_entropy_dict[word] = entropy
-        return word_entropy_dict
-
 
     def sort_words_with_letter_positional_prob(self, words):
         letter_position_prob = self.get_letter_positional_prob_dict(words)
@@ -229,24 +201,20 @@ class WordleSolver():
             for i in range(0, len(letter_position_prob)):
                 if letter_position_prob[i]:
                     score *= letter_position_prob[i][word[i]]
+            # words_with_prob.append((word, (0.5-score)**2))
             words_with_prob.append((word, score))
+        #words_with_prob.sort(key=lambda element: element[1], reverse=False)
         words_with_prob.sort(key=lambda element: element[1], reverse=True)
         return words_with_prob
 
-    
+
     def sort_words(self, words):
         sorted_words = []
-        if self.sort_suggested_words_by_entropies:
-            if len(words) <= self.entropy_calculation_local_max_word_count:
-                localised_entropies = self.get_word_entropy_dict(words)
-                words_with_socres = [(word, localised_entropies[word]) for word in words]
+        if len(self.word_entropies) > 0:
+            if all([word in self.word_entropies for word in words]):
+                words_with_socres = [(word, self.word_entropies[word]) for word in words]
                 words_with_socres.sort(key=lambda element: element[1], reverse=False)
                 sorted_words = [word for (word, _) in words_with_socres]
-            elif len(self.word_entropies) > 0:
-                if all([word in self.word_entropies for word in words]):
-                    words_with_socres = [(word, self.word_entropies[word]) for word in words]
-                    words_with_socres.sort(key=lambda element: element[1], reverse=False)
-                    sorted_words = [word for (word, _) in words_with_socres]
         if len(sorted_words) <= 0:
             sorted_words = [word_with_prob[0] for word_with_prob in self.sort_words_with_letter_positional_prob(words)]
         return sorted_words
@@ -325,9 +293,11 @@ if __name__ == "__main__":
 
     args = argParser.parse_args()
 
-    word_list_file_paths = ["english_words_simple.txt", "english_words_alpha_dwyl.txt"]
+    word_list_file_paths = ["english_words_opener.txt", "english_words_full.txt"]
 
     solver_multi = WorldSolverMultiList(word_list_file_paths, args.length, not args.plurals)
+
+    solver_multi.max_try_indexes_for_lists = [2, sys.maxsize]
 
     print("The WORDLE Solver CLI")
     print(f"(Word length: {args.length}; Plurals: {'Yes' if args.plurals else 'No'})")
@@ -338,11 +308,10 @@ if __name__ == "__main__":
     print(" _\tletter not in the word (grey box)\n")
     print("Commands:")
     print(" !done\t\tyou're done guessing a hidden word.  this will reset the state of the solver for you to guess a new hidden word")
-    print(" !extended\tuse the extended word list if all suggested words shown are not accepted")
     print(" !tries\t\tsee the tries entered")
     print(" !remove_last\tremove the last try entered\n")
 
-    print("Tips: This Solver recommends entering 'opera' as the first word.\n\n")
+    first_run = True
 
     while True:
         print("Please enter you last try as word:symbols")
@@ -372,9 +341,6 @@ if __name__ == "__main__":
                     continue
         elif (user_input == "!done"):
             reset = True
-        elif (user_input in "!extended"):
-            use_extended_solver = True
-            print("You are now using an extended word list")
         elif (user_input == "!remove_last"):
                 solver_multi.tries = solver_multi.tries[:-1]
                 print("Your last try has been removed")

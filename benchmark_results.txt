@@ -1,28 +1,11 @@
-# first guess: opera
+Benchmarking using all words of 5 letters (no plurals) from english_words_original_wordle.txt completed in 195.3777048587799s
+Solver word lists: english_words_opener.txt -> english_words_full.txt
+9049 words - average: 4.608133495413858 tries
+Guessing failed within 6 tries: 847 words
 
-Benchmarking using english_words_simple.txt completed in 2.4313647747039795s
-913 words - average: 3.5180722891566263 tries
-Guessing failed within 6 tries: 2 words
+---
 
-Benchmarking using english_words_10k_mit.txt completed in 3.710480213165283s
-1053 words - average: 3.5137701804368473 tries
-Guessing failed within 6 tries: 2 words
-
-Benchmarking using english_words_alpha_dwyl.txt completed in 260.77416229248047s
-12828 words - average: 4.650919862800125 tries
-Guessing failed within 6 tries: 1207 words
-
-
-# first guess: first suggested word
-
-Benchmarking using english_words_simple.txt completed in 5.440746307373047s
-913 words - average: 3.43592552026287 tries
-Guessing failed within 6 tries: 3 words
-
-Benchmarking using english_words_10k_mit.txt completed in 5.927120685577393s
-1053 words - average: 3.4292497625830958 tries
-Guessing failed within 6 tries: 3 words
-
-Benchmarking using english_words_alpha_dwyl.txt completed in 292.8004949092865s
-12828 words - average: 4.661989398191456 tries
-Guessing failed within 6 tries: 1429 words
+Benchmarking using all words of 5 letters (no plurals) from english_words_full.txt completed in 314.0159592628479s
+Solver word lists: english_words_opener.txt -> english_words_full.txt
+14463 words - average: 4.570974210053239 tries
+Guessing failed within 6 tries: 1097 words
