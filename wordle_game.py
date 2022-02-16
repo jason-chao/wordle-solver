@@ -30,46 +30,37 @@ class WordleGame:
         hidden_word_index = random.randrange(0, len(self.word_list))
         self.hidden_word  = self.word_list[hidden_word_index]
 
-    def get_letter_occurrences(self, word) -> dict:
-        letter_occurrence_dict = {}
-        for letter in word:
-            if letter not in letter_occurrence_dict:
-                letter_occurrence_dict[letter] = 1
-            else:
-                letter_occurrence_dict[letter] += 1
-        return letter_occurrence_dict
 
     def guess(self, guessed_word) -> str:
         if not self.hidden_word:
             self.pick_a_hidden_word_randomly()
-        output = ""
+        
         if not self.are_characters_valid(guessed_word):
             raise Exception("Invalid input")
-        guessed_word_letter_occurrence = self.get_letter_occurrences(guessed_word)
+        
+        guessed_word_letters = [letter for letter in guessed_word]
+        output_symbols = ["!"] * self.word_length
+        hidden_word_letters = [letter for letter in self.hidden_word]
+
         for i in range(0, self.word_length):
-            guessed_letter = guessed_word[i]
-            if guessed_letter == self.hidden_word[i]:
-                output += "+"
+            if guessed_word_letters[i] == hidden_word_letters[i]:
+                output_symbols[i] = "+"
+                hidden_word_letters[i] = " "
+
+        for i in range(0, self.word_length):
+            if output_symbols[i] != "!":
+                continue
+            if guessed_word_letters[i] in hidden_word_letters:
+                letter_index_in_hidden_word = hidden_word_letters.index(guessed_word_letters[i])
+                hidden_word_letters[letter_index_in_hidden_word] = " "
+                output_symbols[i] = "?"
             else:
-                if guessed_letter in self.hidden_word:
-                    if guessed_word_letter_occurrence[guessed_letter] > 1:
-                        preceding_segment = guessed_word[:i]
-                        if len(preceding_segment)<=0:
-                            output += "?"
-                        else:
-                            segment_letter_occurence = self.get_letter_occurrences(preceding_segment)
-                            hidden_word_letter_occurance = self.get_letter_occurrences(self.hidden_word)
-                            if guessed_letter not in segment_letter_occurence:
-                                output += "?"
-                            elif segment_letter_occurence[guessed_letter] < hidden_word_letter_occurance[guessed_letter]:
-                                output += "?"
-                            else:
-                                output += "_"
-                    else:
-                        output += "?"
-                else:
-                    output += "_"
-        return output
+                output_symbols[i] = "_"
+                    
+        if "!" in output_symbols:
+            raise Exception(f"Error in generating output symbols for {guessed_word} (hidden: {self.hidden_word}): {''.join(output_symbols)}")
+
+        return "".join(output_symbols)
 
 
 if __name__ == "__main__":

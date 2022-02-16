@@ -147,7 +147,7 @@ class WordleSolver():
                     if word[i] not in self.included_letters:
                         self.excluded_letters += word[i]
                     else:
-                       if word[i] not in self.max_letter_occurrence:
+                        if word[i] not in self.max_letter_occurrence:
                            self.max_letter_occurrence[word[i]] = sum([1 for letter in word[:i] if letter == word[i]]) + sum([1 for letter in word[(i+1):] if letter == word[i]])
         self.included_letters = "".join(set(self.included_letters))
         self.excluded_letters = "".join(set([letter for letter in self.excluded_letters if letter not in self.included_letters]))
