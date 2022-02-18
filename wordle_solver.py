@@ -18,13 +18,15 @@ class SuggestedWordsResults:
 
 class WorldSolverMultiList:
 
-    def __init__(self, word_list_file_paths: list = [], word_length : int = 5, exclude_plurals:bool=True, word_entropies:dict={}):
+    def __init__(self, word_list_file_paths: list = [], word_length : int = 5, exclude_plurals:bool=True, word_socres:dict={}, order_words_by_score_desc:bool=False, word_symbol_combinations:dict={}):
         self.word_lists = []
         self.word_list_file_paths = word_list_file_paths
         self.word_length = word_length
         self.exclude_plurals = exclude_plurals
-        self.word_entropies = word_entropies
+        self.word_socres = word_socres
         self.max_try_indexes_for_lists = []
+        self.order_words_by_score_desc = order_words_by_score_desc
+        self.word_symbol_combinations = word_symbol_combinations
         for file_path in self.word_list_file_paths:
             word_list = Utility.load_word_list(file_path, self.word_length, self.exclude_plurals)
             self.word_lists.append(word_list)
@@ -38,7 +40,9 @@ class WorldSolverMultiList:
         for word_list in self.word_lists:
             solver = WordleSolver(None, self.word_length, self.exclude_plurals)
             solver.word_list = word_list
-            solver.word_entropies = self.word_entropies
+            solver.word_socres = self.word_socres
+            solver.order_words_by_descending_socre = self.order_words_by_score_desc
+            solver.word_symbol_combinations = self.word_symbol_combinations
             self.solvers.append(solver)
         pass
 
@@ -94,11 +98,14 @@ class WordleSolver():
     def __init__(self, word_list_file_path: str = None, word_length : int = 5, exclude_plurals:bool=True):
         self.permitted_input_symbols = "+?_"
         self.word_list = []
-        self.word_entropies = {}
+        self.word_socres = {}
+        self.word_symbol_combinations = {}
         self.symbol_anyletter = "*"
+        self.effective_word_list = []
         self.word_list_file_path = word_list_file_path
         self.word_length = word_length
         self.exclude_plurals = exclude_plurals
+        self.order_words_by_descending_socre = False
         if self.word_list_file_path is not None:
             self.word_list = Utility.load_word_list(self.word_list_file_path, self.word_length, self.exclude_plurals)
         self.reset()
@@ -116,6 +123,7 @@ class WordleSolver():
         self.right_spot_pattern = self.symbol_anyletter * self.word_length
         self.max_letter_occurrence = {}
         self.excluded_words = []
+        self.effective_word_list = []
 
 
     def get_pattern_parameter_conflicts(self):
@@ -133,6 +141,7 @@ class WordleSolver():
 
     def update_pattern_paramters(self):
         self.reset_pattern_parameters()
+        possible_word_lists = []
         for (word, symbol_pattern) in self.tries:
             for i in range(0, self.word_length):
                 if symbol_pattern[i] in ["+", "?"]:
@@ -149,9 +158,19 @@ class WordleSolver():
                     else:
                         if word[i] not in self.max_letter_occurrence:
                            self.max_letter_occurrence[word[i]] = sum([1 for letter in word[:i] if letter == word[i]]) + sum([1 for letter in word[(i+1):] if letter == word[i]])
+            if word in self.word_symbol_combinations:
+                if symbol_pattern in self.word_symbol_combinations[word]:
+                    possible_word_lists.append(self.word_symbol_combinations[word][symbol_pattern])
         self.included_letters = "".join(set(self.included_letters))
         self.excluded_letters = "".join(set([letter for letter in self.excluded_letters if letter not in self.included_letters]))
         self.wrong_spot_pattern = ["".join(set(pattern)) for pattern in self.wrong_spot_pattern]
+        if len(possible_word_lists) > 0:
+            effective_words_set = []
+            for possible_word_list in possible_word_lists:
+                effective_words_set += possible_word_list
+            effective_words_set = list(set(effective_words_set))
+            self.effective_word_list = [word for word in effective_words_set if all([word in word_list for word_list in possible_word_lists])]
+        pass
 
 
     def get_letter_prob_dict(self, word_list):
@@ -201,19 +220,17 @@ class WordleSolver():
             for i in range(0, len(letter_position_prob)):
                 if letter_position_prob[i]:
                     score *= letter_position_prob[i][word[i]]
-            # words_with_prob.append((word, (0.5-score)**2))
             words_with_prob.append((word, score))
-        #words_with_prob.sort(key=lambda element: element[1], reverse=False)
         words_with_prob.sort(key=lambda element: element[1], reverse=True)
         return words_with_prob
 
 
     def sort_words(self, words):
         sorted_words = []
-        if len(self.word_entropies) > 0:
-            if all([word in self.word_entropies for word in words]):
-                words_with_socres = [(word, self.word_entropies[word]) for word in words]
-                words_with_socres.sort(key=lambda element: element[1], reverse=False)
+        if len(self.word_socres) > 0:
+            if all([word in self.word_socres for word in words]):
+                words_with_socres = [(word, self.word_socres[word]) for word in words]
+                words_with_socres.sort(key=lambda element: element[1], reverse=self.order_words_by_descending_socre)
                 sorted_words = [word for (word, _) in words_with_socres]
         if len(sorted_words) <= 0:
             sorted_words = [word_with_prob[0] for word_with_prob in self.sort_words_with_letter_positional_prob(words)]
@@ -239,8 +256,10 @@ class WordleSolver():
     
 
     def get_possible_words(self):
+        if len(self.effective_word_list) <= 0:
+            self.effective_word_list = self.word_list
         all_excluded_words = list(set([attempt[0] for attempt in self.tries] + self.excluded_words))
-        first_level_filter = [word for word in self.word_list if self.is_in_word(word) and self.is_not_in_word(word) and self.is_not_tried(word) and word not in all_excluded_words]
+        first_level_filter = [word for word in self.effective_word_list if self.is_in_word(word) and self.is_not_in_word(word) and self.is_not_tried(word) and word not in all_excluded_words]
         second_level_filter = [word for word in first_level_filter if all([word[i] not in self.wrong_spot_pattern[i] for i in range(0, self.word_length)])]
         third_level_filter = [word for word in second_level_filter if self.match_right_spot_pattern(word)]
         if len(self.max_letter_occurrence) <= 0:
