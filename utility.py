@@ -14,8 +14,3 @@ class Utility():
         for (word, score) in word_score_lines:
             word_score_dict[word] = float(score.replace("\r", "").replace("\n", ""))
         return word_score_dict
-    
-    def load_single_word():
-        num_text = 0
-        num_words = 1000 / num_text
-        return num_words
