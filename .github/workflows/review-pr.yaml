@@ -1,0 +1,28 @@
+name: Review PR
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Install dependencies
+      run: pip install PyGithub openai
+
+    - name: Review PR
+      run: python .github/workflows/review-pr.py
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        OPENAI_SECRET: ${{ secrets.OPENAI_API_KEY }}
+  
